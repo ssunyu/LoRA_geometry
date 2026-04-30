@@ -1,0 +1,10 @@
+torch>=2.0
+numpy>=1.24
+matplotlib>=3.7
+
+# Clinical bridge: pretrained ViT + LoRA on chest X-ray.
+# Pin PEFT below the newer torchao-dependent releases so Colab stays simple.
+transformers>=4.40,<4.50
+peft==0.11.1
+medmnist>=3.0
+pillow>=10.0
