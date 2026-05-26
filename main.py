@@ -84,81 +84,13 @@ class PneumoniaTensorDataset(Dataset):
 
 
 def print_protocol() -> None:
-    section("modeling protocol")
-    print("phenomenon     : a new task changes a pretrained model's behavior")
-    print("unit           : Delta W, the task-induced displacement of a frozen operator")
-    print("space          : Delta W lives in R^(out x in)")
-    print("dense cause    : Delta W can move anywhere in that space")
-    print("LoRA cause     : Delta W must pass through x -> A -> z_task -> B")
-    print("constraint     : rank(Delta W) <= r, a low-dimensional manifold")
-    print("observable     : singular-value energy collapse")
-    print("test logic     : toy world has known cause; clinical world has only traces")
-
-
-def vector_field(ax: plt.Axes, matrix: np.ndarray, title: str) -> None:
-    grid = np.linspace(-1.0, 1.0, 13)
-    xs, ys = np.meshgrid(grid, grid)
-    points = np.stack([xs.ravel(), ys.ravel()], axis=0)
-    moved = matrix @ points
-
-    ax.quiver(
-        points[0],
-        points[1],
-        moved[0],
-        moved[1],
-        angles="xy",
-        scale_units="xy",
-        scale=8.0,
-        width=0.004,
-        color="#d62728",
-        alpha=0.85,
-    )
-    ax.axhline(0, color="black", lw=0.7, alpha=0.35)
-    ax.axvline(0, color="black", lw=0.7, alpha=0.35)
-    ax.set_aspect("equal")
-    ax.set_xlim(-1.15, 1.15)
-    ax.set_ylim(-1.15, 1.15)
-    ax.set_title(title)
-    ax.set_xticks([])
-    ax.set_yticks([])
-
-
-def draw_intuition() -> Path:
-    dense_2d = np.array([[1.2, -0.4], [0.7, 0.9]])
-    rank1_2d = np.outer(np.array([1.0, 0.35]) / np.linalg.norm([1.0, 0.35]), np.array([0.8, -0.6]))
-    dense = make_low_rank_update(out_dim=24, in_dim=24, rank=24, seed=0)
-    low_rank = make_low_rank_update(out_dim=24, in_dim=24, rank=3, seed=1)
-
-    fig, axes = plt.subplots(1, 3, figsize=(13.5, 4.2))
-    vector_field(axes[0], dense_2d, "full space: many possible pushes")
-    vector_field(axes[1], rank1_2d, "rank-1 manifold: one dominant push")
-
-    ax = axes[2]
-    dense_s = singular_values(dense)
-    low_rank_s = singular_values(low_rank)
-    ax.semilogy(dense_s / dense_s.max(), "o-", label="dense update", color="#444444")
-    ax.semilogy(low_rank_s / low_rank_s.max(), "o-", label="low-rank update", color="#d62728")
-    ax.set_title("same assumption, spectrum view")
-    ax.set_xlabel("singular value index")
-    ax.set_ylabel("sigma / sigma_max")
-    ax.grid(alpha=0.28, which="both")
-    ax.legend(fontsize=9)
-
-    fig.suptitle("Choose the unit, choose the space, then choose the constraint", fontweight="bold")
-    fig.tight_layout()
-    out = VIS / "intuition_low_rank.png"
-    fig.savefig(out, dpi=170, bbox_inches="tight")
-    plt.close(fig)
-    return out
-
-
-def run_intuition() -> Path:
-    section("intuition: from phenomenon to constrained space")
-    print("I first decide what object carries the causal change: Delta W.")
-    print("Then I ask whether Delta W needs the whole space or a low-rank manifold.")
-    out = draw_intuition()
-    print(f"saved: {out}")
-    return out
+    section("ADAPTATION MANIFOLD ANALYSIS PROTOCOL")
+    print("Task Shift     : Domain adaptation shifts pretrained behaviors on new tasks")
+    print("Unit of Change : Delta W (The weight displacement tensor carrying task adaptation)")
+    print("Hypothesis     : Weight adaptation happens on a low-rank task subspace")
+    print("Constraint     : rank(Delta W) <= r (Restricting update degrees of freedom)")
+    print("Observable     : Singular Value Spectrum Collapse (Energy concentration in a few directions)")
+    print("Validation     : Recovers subspace in Toy world; profiles spectrum decay in Medical ViT")
 
 
 def print_tensor_flow(lora: LoRALinear, batch_size: int) -> None:
@@ -171,10 +103,8 @@ def print_tensor_flow(lora: LoRALinear, batch_size: int) -> None:
     print(shape_line("update = z B^T", (batch_size, lora.out_dim)))
     print(shape_line("Delta W = B A", lora.delta_weight.shape))
     print()
-    print(f"dense Delta W freedom : {compact_int(report['dense_space_dim'])}")
-    print(f"LoRA raw coordinates  : {compact_int(report['lora_raw_params'])}")
-    print(f"rank-r manifold dim   : {compact_int(report['rank_manifold_dim'])}")
-    print(f"A/B gauge redundancy  : {compact_int(report['gauge_redundancy'])}")
+    print(f"Unconstrained space (Dense)  : {compact_int(report['dense_space_dim'])} parameters")
+    print(f"LoRA active parameter count  : {compact_int(report['lora_raw_params'])} parameters")
 
 
 def draw_toy(
@@ -585,10 +515,10 @@ def run_clinical_figure_only() -> None:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="LoRA as clinical adaptation geometry")
+    parser = argparse.ArgumentParser(description="LoRA parameter efficiency analysis in medical ViTs")
     parser.add_argument(
         "--stage",
-        choices=["intuition", "toy", "real", "clinical-figure", "all"],
+        choices=["toy", "real", "clinical-figure", "all"],
         default="toy",
         help="real trains ViT and is intended for Colab/GPU; clinical-figure reuses saved metrics.",
     )
@@ -602,8 +532,6 @@ def main() -> None:
     set_seed(args.seed)
     print_protocol()
 
-    if args.stage in {"intuition", "all"}:
-        run_intuition()
     if args.stage in {"toy", "all"}:
         run_toy(seed=args.seed)
     if args.stage in {"real", "all"}:
